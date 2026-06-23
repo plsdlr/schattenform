@@ -1,5 +1,7 @@
 # schattenform
 
+![demo](demo.gif)
+
 ## 1. What is this?
 
 A prototype of a **ZK-proven digital object** — a single asset that passes between participants, where every ownership transfer and state update is cryptographically provable.
