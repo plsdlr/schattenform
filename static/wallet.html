@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title id="pageTitle">Wallet — pod2</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #fff; color: #000; padding: 2rem; }
+    nav { margin-bottom: 2rem; display: flex; gap: 0; border: 2px solid #000; width: fit-content; }
+    nav a { color: #000; text-decoration: none; font-size: 0.8rem; padding: 0.3rem 0.8rem; border-right: 2px solid #000; text-transform: uppercase; letter-spacing: 0.05em; }
+    nav a:last-child { border-right: none; }
+    nav a:hover { background: #000; color: #fff; }
+    nav a.active { background: #000; color: #fff; }
+    h1 { color: #000; margin-bottom: 2rem; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 4px solid #000; padding-bottom: 0.75rem; }
+    h2 { color: #fff; margin: 0 0 1rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.12em; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 2px solid #000; margin-bottom: 2rem; }
+    .panel { background: #000; color: #fff; padding: 1.25rem; border-right: 2px solid #fff; }
+    .panel:last-child { border-right: none; }
+    .status-bar { border: 2px solid #000; padding: 0.75rem 1rem; margin-bottom: 2rem; display: flex; gap: 2rem; font-size: 0.8rem; flex-wrap: wrap; }
+    label { display: block; font-size: 0.7rem; color: #fff; margin-bottom: 0.2rem; margin-top: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    input, select { background: #000; border: 2px solid #fff; color: #fff; padding: 0.4rem 0.6rem; font-family: monospace; font-size: 0.85rem; outline: none; }
+    input:focus, select:focus { background: #fff; color: #000; }
+    select { width: 100%; }
+    button { margin-top: 1rem; background: #fff; border: 2px solid #fff; color: #000; padding: 0.4rem 1rem; cursor: pointer; font-family: monospace; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
+    button:hover:not(:disabled) { background: #000; color: #fff; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    button.sm { font-size: 0.7rem; padding: 0.2rem 0.5rem; margin-top: 0.5rem; }
+    .output { margin-top: 0.75rem; border: 2px solid #fff; padding: 0.75rem; font-size: 0.75rem; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; }
+    .output.error { border-style: dashed; }
+    .holding { font-size: 0.85rem; margin-bottom: 1rem; padding: 0.5rem 0.75rem; background: #fff; color: #000; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; }
+    .field-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+    .field-row label { width: 80px; margin: 0; }
+    .field-row input { width: 100px; }
+    .field-row .orig { font-size: 0.7rem; opacity: 0.5; }
+    .not-holding { font-size: 0.85rem; opacity: 0.7; }
+    .divider { border: none; border-top: 1px solid #fff; margin: 1rem 0; opacity: 0.3; }
+    .pubkey-box { font-size: 0.72rem; word-break: break-all; line-height: 1.6; margin-top: 0.5rem; opacity: 0.8; }
+    /* viz section */
+    #vizSection { display: none; background: #000; border: 2px solid #000; padding: 1.25rem; margin-bottom: 2rem; }
+    #vizSection h2 { color: #fff; }
+    #vizGrid { display: grid; grid-template-columns: repeat(4, 120px); gap: 0; width: fit-content; margin-top: 0.75rem; image-rendering: pixelated; }
+    #vizGrid canvas { display: block; width: 120px; height: 120px; image-rendering: pixelated; }
+    #vizMeta { margin-top: 0.75rem; font-size: 0.7rem; color: #fff; opacity: 0.4; }
+    /* history */
+    .history > h2 { color: #000; border-bottom: 2px solid #000; padding-bottom: 0.5rem; margin-bottom: 0; }
+    .entry { background: #000; color: #fff; border: 2px solid #000; border-top: none; padding: 0.75rem 1rem; font-size: 0.8rem; }
+    .entry .meta { margin-bottom: 0.4rem; }
+    .entry pre { white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow-y: auto; font-size: 0.75rem; border-top: 1px solid #fff; padding-top: 0.4rem; margin-top: 0.4rem; opacity: 0.7; }
+    .entry details summary { font-size: 0.75rem; opacity: 0.5; cursor: pointer; margin-top: 0.3rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .entry details summary:hover { opacity: 1; }
+    .tag { display: inline-block; border: 1px solid #fff; padding: 0 0.3rem; font-size: 0.7rem; margin-right: 0.3rem; }
+    .radio-group { display: flex; gap: 0; margin-top: 0.3rem; margin-bottom: 0.2rem; }
+    .radio-opt input[type=radio] { display: none; }
+    .radio-opt span { display: inline-block; position: relative; z-index: 0; border: 2px solid #fff; margin-right: -2px; padding: 0.4rem 1rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; cursor: pointer; }
+    .radio-opt:last-child span { margin-right: 0; }
+    .radio-opt input[type=radio]:checked + span { background: #fff; color: #000; z-index: 1; }
+    .radio-opt:hover span { background: #fff; color: #000; z-index: 1; }
+  </style>
+</head>
+<body>
+
+<nav id="nav">
+  <a href="/">admin</a>
+  <a href="/alice">alice</a>
+  <a href="/bob">bob</a>
+  <a href="/charlie">charlie</a>
+</nav>
+
+<h1 id="heading">—</h1>
+
+<div class="status-bar">
+  <span>Genesis: <strong id="sGenesis">—</strong></span>
+  <span>Version: <strong id="sVersion">—</strong></span>
+  <span>Baton: <strong id="sBaton">—</strong></span>
+  <span>Steps: <strong id="sSteps">—</strong></span>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Identity</h2>
+    <div id="identity"><span style="opacity:0.4">loading…</span></div>
+  </div>
+  <div class="panel">
+    <h2>Inventory</h2>
+    <div id="inventory"><span style="opacity:0.4">loading…</span></div>
+  </div>
+</div>
+
+<div id="vizSection">
+  <h2>Object Signature</h2>
+  <div id="vizGrid"></div>
+  <div id="vizMeta"></div>
+</div>
+
+<div class="history">
+  <h2>Submitted Proofs</h2>
+  <div id="proofList"><div class="entry" style="opacity:0.4">No proofs yet.</div></div>
+</div>
+
+<script>
+  const NAME   = location.pathname.replace(/^\//, '');
+  const SYSTEM = new Set(['version', 'prev_hash', 'writer_pk']);
+
+  document.getElementById('pageTitle').textContent = NAME + ' — pod2';
+  document.getElementById('heading').textContent   = NAME;
+  document.querySelectorAll('#nav a').forEach(a => {
+    if (a.textContent === NAME) a.classList.add('active');
+  });
+
+  // ── API ──────────────────────────────────────────────────────────────────────
+
+  const api = (path, opts) =>
+    fetch('/api' + path, opts).then(async r => {
+      const text = await r.text();
+      let body;
+      try { body = JSON.parse(text); } catch { body = text; }
+      if (!r.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
+      return body;
+    });
+
+  function show(id, data, isErr) {
+    const el = document.getElementById(id);
+    el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    el.className = 'output' + (isErr ? ' error' : '');
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
+  function renderStatus(s) {
+    document.getElementById('sGenesis').textContent = s.has_genesis ? 'yes' : 'no';
+    document.getElementById('sVersion').textContent = s.current_version ?? '—';
+    document.getElementById('sBaton').textContent   = s.current_writer ?? '—';
+    document.getElementById('sSteps').textContent   = s.history_len;
+  }
+
+  function renderIdentity(me) {
+    const el = document.getElementById('identity');
+    if (!me) { el.innerHTML = '<span style="opacity:0.4">not found</span>'; return; }
+    const short = me.public_key.length > 64 ? me.public_key.slice(0, 64) + '…' : me.public_key;
+    el.innerHTML = `
+      <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.5;margin-bottom:0.3rem">Public Key</div>
+      <div class="pubkey-box" title="${me.public_key}">${short}</div>
+      <button class="sm" onclick="navigator.clipboard.writeText(${JSON.stringify(me.public_key)})">Copy full key</button>
+    `;
+  }
+
+  function renderInventory(status, participants) {
+    const el = document.getElementById('inventory');
+
+    if (!status.has_genesis) {
+      hideViz();
+      el.innerHTML = '<span class="not-holding">No object exists — ask admin to create genesis.</span>';
+      return;
+    }
+
+    if (status.current_writer !== NAME) {
+      hideViz();
+      const h = status.current_writer || '—';
+      el.innerHTML = `<span class="not-holding">Object held by <strong>${h}</strong></span>`;
+      return;
+    }
+
+    const state  = status.current_state || {};
+    const custom = Object.entries(state).filter(([k]) => !SYSTEM.has(k));
+    const others = participants.filter(p => p.name !== NAME);
+    const sortedCustomKeys = custom.map(([k]) => k).sort((a, b) => a.localeCompare(b));
+    const modeKey = sortedCustomKeys[2];
+
+    showViz(state);
+
+    const fieldRows = sortedCustomKeys.map(k => {
+      const v = state[k];
+      if (k === modeKey) {
+        const cur = Math.min(2, Math.max(0, Number(v) || 0));
+        return '<div class="field-row"><label>' + k + '</label>'
+          + '<div class="radio-group">'
+          + ['angle','radial','raindrop'].map((name, i) =>
+              '<label class="radio-opt">'
+              + '<input type="radio" name="f_' + k + '" value="' + i + '"' + (cur === i ? ' checked' : '') + '>'
+              + '<span>' + name + '</span></label>'
+            ).join('')
+          + '</div></div>';
+      }
+      return '<div class="field-row"><label>' + k + '</label>'
+        + '<input id="f_' + k + '" type="number" value="' + v + '" data-orig="' + v + '" />'
+        + '<span class="orig" id="orig_' + k + '"></span></div>';
+    }).join('');
+
+    el.innerHTML = `
+      <div class="holding">you hold the object <span class="tag">v${status.current_version}</span></div>
+      <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.06em;opacity:0.5;margin-bottom:0.6rem">Current Values</div>
+      ${fieldRows}
+      <hr class="divider">
+      <label>Transfer to</label>
+      <select id="nextOwner" style="margin-top:0.3rem">
+        ${others.map(p => `<option value="${p.name}">${p.name}</option>`).join('')}
+      </select>
+      <button id="proveBtn" onclick="doWrite()">Sign &amp; Prove</button>
+      <div class="output" id="writeOut" style="display:none"></div>
+    `;
+
+    sortedCustomKeys.forEach(k => {
+      if (k === modeKey) {
+        document.querySelectorAll(`input[name="f_${k}"]`).forEach(radio => {
+          radio.addEventListener('change', () => {
+            inventoryDirty = true;
+            updateVizFromInputs(sortedCustomKeys);
+          });
+        });
+      } else {
+        const inp = document.getElementById(`f_${k}`);
+        if (!inp) return;
+        inp.addEventListener('input', e => {
+          const orig = parseFloat(e.target.dataset.orig);
+          const cur  = parseFloat(e.target.value);
+          document.getElementById(`orig_${k}`).textContent = cur !== orig ? `← ${orig}` : '';
+          inventoryDirty = true;
+          updateVizFromInputs(sortedCustomKeys);
+        });
+      }
+    });
+  }
+
+  function renderProofs(history) {
+    const mine = history.filter(h => h.writer === NAME);
+    const el   = document.getElementById('proofList');
+    if (!mine.length) {
+      el.innerHTML = '<div class="entry" style="opacity:0.4">No proofs submitted yet.</div>';
+      return;
+    }
+    el.innerHTML = mine.map(e => `
+      <div class="entry">
+        <div class="meta">
+          <span class="tag">v${e.version}</span>
+          <strong>${e.writer}</strong> → <strong>${e.next_writer}</strong>
+          &nbsp; updates: <code>${JSON.stringify(e.updates)}</code>
+        </div>
+        <details>
+          <summary>state snapshot</summary>
+          <pre>${JSON.stringify(e.state, null, 2)}</pre>
+        </details>
+      </div>
+    `).join('');
+  }
+
+  // ── Visualization ─────────────────────────────────────────────────────────────
+
+  const VIZ_COLS = 4, VIZ_ROWS = 4, VIZ_N = 16;
+  const VW = 32, VH = 32;
+  const ARM = 5;
+  const CROSS_CENTERS = [{x:8,y:8},{x:24,y:8},{x:8,y:24},{x:24,y:24}];
+  const MODES = ['angle', 'radial', 'raindrop'];
+
+  const PHASE_OFFSETS = [];
+  for (let row = 0; row < VIZ_ROWS; row++)
+    for (let col = 0; col < VIZ_COLS; col++)
+      PHASE_OFFSETS.push((row + col) * (Math.PI / 4));
+
+  let vizCtxs = [], vizSctxs = [];
+  let vizPhase = 0;
+  let vizIntervalId = null;
+  let vizParams = { amp: 8, sigma: 4, mode: 'angle' };
+
+  function initViz() {
+    const grid = document.getElementById('vizGrid');
+    grid.innerHTML = '';
+    vizCtxs = []; vizSctxs = [];
+
+    for (let i = 0; i < VIZ_N; i++) {
+      const c = document.createElement('canvas');
+      c.width = VW; c.height = VH;
+      grid.appendChild(c);
+      vizCtxs.push(c.getContext('2d'));
+
+      const s = document.createElement('canvas');
+      s.width = VW; s.height = VH;
+      const sc = s.getContext('2d');
+      // paint crosses
+      sc.fillStyle = '#ffffff'; sc.fillRect(0, 0, VW, VH);
+      sc.fillStyle = '#000000';
+      for (const {x: cx, y: cy} of CROSS_CENTERS) {
+        sc.fillRect(cx - ARM, cy, ARM * 2 + 1, 1);
+        sc.fillRect(cx, cy - ARM, 1, ARM * 2 + 1);
+      }
+      vizSctxs.push(sc);
+    }
+  }
+
+  function getPixels(i) {
+    const data = vizSctxs[i].getImageData(0, 0, VW, VH).data;
+    const out = [];
+    for (let y = 0; y < VH; y++)
+      for (let x = 0; x < VW; x++)
+        if (data[(y * VW + x) * 4] < 128) out.push({x, y});
+    return out;
+  }
+
+  function drawDisplace(ctx, pixels, cellPhase) {
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, VW, VH);
+    const rad = Math.PI / 2; // 90°
+    const s2  = 2 * vizParams.sigma * vizParams.sigma || 1;
+    const amp = vizParams.amp * Math.abs(Math.sin(cellPhase));
+    ctx.fillStyle = '#000000';
+    for (const {x, y} of pixels) {
+      const d    = x - 16;
+      const disp = amp * Math.exp(-(d * d) / s2);
+      const r    = vizParams.mode === 'radial' ? Math.atan2(1, d / (vizParams.sigma || 1)) : rad;
+      const px   = Math.round(x + disp * Math.cos(r));
+      const py   = Math.round(y - disp * Math.sin(r));
+      if (px >= 0 && px < VW && py >= 0 && py < VH) ctx.fillRect(px, py, 1, 1);
+    }
+  }
+
+  function drawRaindrop(ctx, pixels, cellPhase) {
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, VW, VH);
+    const waveR = (cellPhase * 6) % 30;
+    const s2    = 2 * vizParams.sigma * vizParams.sigma || 1;
+    ctx.fillStyle = '#000000';
+    for (const {x, y} of pixels) {
+      const dx = x - 16, dy = y - 16;
+      const r  = Math.sqrt(dx*dx + dy*dy) || 0.001;
+      const d  = vizParams.amp * Math.exp(-((r - waveR) ** 2) / s2);
+      const px = Math.round(x + d * dx / r);
+      const py = Math.round(y + d * dy / r);
+      if (px >= 0 && px < VW && py >= 0 && py < VH) ctx.fillRect(px, py, 1, 1);
+    }
+  }
+
+  function stepViz() {
+    for (let i = 0; i < VIZ_N; i++) {
+      const pixels = getPixels(i);
+      const cp     = vizPhase + PHASE_OFFSETS[i];
+      if (vizParams.mode === 'raindrop') drawRaindrop(vizCtxs[i], pixels, cp);
+      else drawDisplace(vizCtxs[i], pixels, cp);
+    }
+    vizPhase += 0.1;
+  }
+
+  function updateVizFromInputs(sortedKeys) {
+    if (!vizIntervalId) return;
+    const vals = sortedKeys.map(k => {
+      const el = document.getElementById(`f_${k}`);
+      if (el) return Number(el.value);
+      const checked = document.querySelector(`input[name="f_${k}"]:checked`);
+      return checked ? Number(checked.value) : NaN;
+    });
+    vizParams.amp   = Math.max(1,   isNaN(vals[0]) ? 8   : vals[0]);
+    vizParams.sigma = Math.max(0.5, isNaN(vals[1]) ? 4   : vals[1]);
+    const modeIdx   =               isNaN(vals[2]) ? 0   : vals[2];
+    vizParams.mode  = (modeIdx < 0 || modeIdx > 3) ? 'angle' : (MODES[modeIdx] ?? 'angle');
+    document.getElementById('vizMeta').textContent =
+      `amp=${vizParams.amp}  σ=${vizParams.sigma}  mode=${vizParams.mode}`;
+  }
+
+  function showViz(state) {
+    const sorted = Object.entries(state)
+      .filter(([k]) => !SYSTEM.has(k))
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    const amp      = Math.max(1, Number(sorted[0]?.[1] ?? 8));
+    const sigma    = Math.max(0.5, Number(sorted[1]?.[1] ?? 4));
+    const modeIdx  = Number(sorted[2]?.[1] ?? 0);
+    const mode     = (modeIdx > 3 || modeIdx < 0) ? 'angle' : (MODES[modeIdx] ?? 'angle');
+
+    vizParams.amp   = amp;
+    vizParams.sigma = sigma;
+    vizParams.mode  = mode;
+
+    document.getElementById('vizMeta').textContent =
+      `amp=${amp}  σ=${sigma}  mode=${mode}` +
+      (sorted[0] ? `  (${sorted.map(([k,v])=>`${k}=${v}`).join(', ')})` : '');
+
+    document.getElementById('vizSection').style.display = 'block';
+
+    if (!vizIntervalId) {
+      initViz();
+      vizIntervalId = setInterval(stepViz, 80);
+    }
+  }
+
+  function hideViz() {
+    document.getElementById('vizSection').style.display = 'none';
+  }
+
+  // ── Write action ─────────────────────────────────────────────────────────────
+
+  let inventoryDirty = false;
+  let provingTimer = null;
+
+  async function doWrite() {
+    const btn    = document.getElementById('proveBtn');
+    const outEl  = document.getElementById('writeOut');
+    const status = await api('/status');
+    const state  = status.current_state || {};
+    const custom = Object.keys(state).filter(k => !SYSTEM.has(k));
+
+    const updates = {};
+    for (const k of custom) {
+      const inp = document.getElementById(`f_${k}`);
+      let newVal;
+      if (inp) {
+        newVal = parseInt(inp.value, 10);
+      } else {
+        const checked = document.querySelector(`input[name="f_${k}"]:checked`);
+        newVal = checked ? parseInt(checked.value, 10) : NaN;
+      }
+      const origVal = state[k];
+      if (!isNaN(newVal) && newVal !== origVal) updates[k] = newVal;
+    }
+
+    const next_writer = document.getElementById('nextOwner').value;
+
+    btn.disabled = true;
+    outEl.style.display = 'block';
+    outEl.className = 'output';
+    outEl.textContent = 'generating proof…';
+    let elapsed = 0;
+    provingTimer = setInterval(() => {
+      elapsed++;
+      btn.textContent = `PROVING… (${elapsed}s)`;
+    }, 1000);
+    btn.textContent = 'PROVING… (0s)';
+
+    try {
+      const r = await api('/write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ writer: NAME, next_writer, updates }),
+      });
+      outEl.textContent = `done in ${elapsed}s — v${r.version} → ${next_writer}`;
+      inventoryDirty = false;
+      refresh();
+    } catch(e) {
+      show('writeOut', e.message, true);
+    } finally {
+      clearInterval(provingTimer);
+      btn.disabled = false;
+      btn.textContent = 'Sign & Prove';
+    }
+  }
+
+  // ── Main loop ────────────────────────────────────────────────────────────────
+
+  async function refresh() {
+    try {
+      const [status, participants, history] = await Promise.all([
+        api('/status'), api('/participants'), api('/history'),
+      ]);
+      renderStatus(status);
+      renderIdentity(participants.find(p => p.name === NAME));
+      // Skip inventory re-render while user is editing; always re-render if baton moved
+      if (!inventoryDirty || status.current_writer !== NAME) {
+        renderInventory(status, participants);
+      }
+      renderProofs(history);
+    } catch(e) { console.error(e); }
+  }
+
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>

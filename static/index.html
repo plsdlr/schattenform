@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Digital Object — pod2 prototype</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: monospace; background: #000; color: #fff; padding: 2rem; }
+    nav { margin-bottom: 2rem; display: flex; gap: 0; border: 2px solid #fff; width: fit-content; }
+    nav a { color: #fff; text-decoration: none; font-size: 0.8rem; padding: 0.3rem 0.8rem; border-right: 2px solid #fff; text-transform: uppercase; letter-spacing: 0.05em; }
+    nav a:last-child { border-right: none; }
+    nav a:hover { background: #fff; color: #000; }
+    nav a.active { background: #fff; color: #000; }
+    h1 { color: #fff; margin-bottom: 2rem; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 4px solid #fff; padding-bottom: 0.75rem; }
+    h2 { color: #fff; margin: 0 0 1rem 0; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.12em; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 2px solid #fff; }
+    .panel { padding: 1.25rem; border-right: 2px solid #fff; border-bottom: 2px solid #fff; }
+    .panel:nth-child(2n) { border-right: none; }
+    .panel:nth-last-child(-n+2) { border-bottom: none; }
+    label { display: block; font-size: 0.7rem; color: #fff; margin-bottom: 0.2rem; margin-top: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    input, textarea, select { width: 100%; background: #000; border: 2px solid #fff; color: #fff; padding: 0.4rem 0.6rem; font-family: monospace; font-size: 0.85rem; outline: none; }
+    input:focus, textarea:focus, select:focus { background: #fff; color: #000; }
+    textarea { resize: vertical; min-height: 80px; }
+    button { margin-top: 1rem; background: #fff; border: 2px solid #fff; color: #000; padding: 0.4rem 1rem; cursor: pointer; font-family: monospace; font-size: 0.85rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
+    button:hover { background: #000; color: #fff; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    button.danger { background: #000; border: 2px solid #fff; color: #fff; }
+    button.danger:hover { background: #fff; color: #000; }
+    .status-bar { border: 2px solid #fff; padding: 0.75rem 1rem; margin-bottom: 2rem; display: flex; gap: 2rem; font-size: 0.8rem; flex-wrap: wrap; }
+    .output { margin-top: 0.75rem; border: 2px solid #fff; padding: 0.75rem; font-size: 0.75rem; color: #fff; white-space: pre-wrap; word-break: break-all; max-height: 200px; overflow-y: auto; }
+    .output.error { border-style: dashed; }
+    .history { margin-top: 2rem; }
+    .history > h2 { border-bottom: 2px solid #fff; padding-bottom: 0.5rem; margin-bottom: 0; }
+    .entry { border: 2px solid #fff; border-top: none; padding: 0.75rem 1rem; font-size: 0.8rem; }
+    .entry .meta { margin-bottom: 0.4rem; }
+    .entry pre { white-space: pre-wrap; word-break: break-all; max-height: 100px; overflow-y: auto; font-size: 0.75rem; border-top: 1px solid #fff; padding-top: 0.4rem; margin-top: 0.4rem; }
+    .tag { display: inline-block; border: 1px solid #fff; padding: 0 0.3rem; font-size: 0.7rem; margin-right: 0.3rem; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/" class="active">admin</a>
+    <a href="/alice">alice</a>
+    <a href="/bob">bob</a>
+    <a href="/charlie">charlie</a>
+  </nav>
+  <h1>Digital Object — pod2 prototype</h1>
+
+  <div class="status-bar" id="statusBar">
+    <span>Genesis: <strong id="sGenesis">—</strong></span>
+    <span>Version: <strong id="sVersion">—</strong></span>
+    <span>Baton: <strong id="sBaton">—</strong></span>
+    <span>Participants: <strong id="sParticipants">—</strong></span>
+    <span>Steps: <strong id="sSteps">—</strong></span>
+  </div>
+
+  <div class="grid">
+
+    <!-- Register -->
+    <div class="panel">
+      <h2>1 · Register participant</h2>
+      <label>Name</label>
+      <input id="regName" placeholder="alice" />
+      <button onclick="register()">Register</button>
+      <div class="output" id="regOut"></div>
+    </div>
+
+    <!-- Genesis -->
+    <div class="panel">
+      <h2>2 · Create genesis</h2>
+      <label>Fields (JSON object of integer values)</label>
+      <textarea id="genFields">{"val_a": 10, "val_b": 20, "val_c": 30}</textarea>
+      <label>First writer (must be registered)</label>
+      <input id="genWriter" placeholder="alice" />
+      <button onclick="genesis()">Create genesis</button>
+      <div class="output" id="genOut"></div>
+    </div>
+
+    <!-- Write step -->
+    <div class="panel">
+      <h2>3 · Write step (ZK proof)</h2>
+      <label>Writer (holds baton)</label>
+      <input id="writeWriter" placeholder="alice" />
+      <label>Next writer</label>
+      <input id="writeNext" placeholder="bob" />
+      <label>Updates (JSON object of changed fields only)</label>
+      <textarea id="writeUpdates">{"val_a": 11}</textarea>
+      <button onclick="doWrite()">Write + Prove</button>
+      <div class="output" id="writeOut"></div>
+    </div>
+
+    <!-- Reset -->
+    <div class="panel">
+      <h2>Utilities</h2>
+      <p style="font-size:0.8rem;color:#fff;margin-top:0.5rem;opacity:0.6">Reset clears all state (participants, genesis, history).</p>
+      <button class="danger" onclick="reset()">Reset</button>
+      <div class="output" id="resetOut"></div>
+    </div>
+
+  </div>
+
+  <div class="history">
+    <h2>Write history</h2>
+    <div id="historyList"><div class="entry" style="opacity:0.4">No writes yet.</div></div>
+  </div>
+
+  <script>
+    const api = (path, opts) =>
+      fetch('/api' + path, opts).then(async r => {
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.message ?? JSON.stringify(body));
+        return body;
+      });
+
+    function show(id, data, isErr) {
+      const el = document.getElementById(id);
+      el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+      el.className = 'output' + (isErr ? ' error' : '');
+    }
+
+    async function refreshStatus() {
+      try {
+        const s = await api('/status');
+        document.getElementById('sGenesis').textContent = s.has_genesis ? 'yes' : 'no';
+        document.getElementById('sVersion').textContent = s.current_version ?? '—';
+        document.getElementById('sBaton').textContent = s.current_writer ?? '—';
+        document.getElementById('sParticipants').textContent = s.participants.join(', ') || '—';
+        document.getElementById('sSteps').textContent = s.history_len;
+      } catch {}
+    }
+
+    async function refreshHistory() {
+      try {
+        const h = await api('/history');
+        const el = document.getElementById('historyList');
+        if (!h.length) { el.innerHTML = '<div class="entry" style="opacity:0.4">No writes yet.</div>'; return; }
+        el.innerHTML = h.map(e => `
+          <div class="entry">
+            <div class="meta">
+              <span class="tag">v${e.version}</span>
+              <strong>${e.writer}</strong> → <strong>${e.next_writer}</strong>
+              &nbsp;&nbsp;updates: ${JSON.stringify(e.updates)}
+            </div>
+            <pre>state: ${JSON.stringify(e.state)}</pre>
+          </div>
+        `).join('');
+      } catch {}
+    }
+
+    async function register() {
+      try {
+        const name = document.getElementById('regName').value.trim();
+        const r = await api('/register', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+        show('regOut', r);
+        refreshStatus();
+      } catch(e) { show('regOut', e.message, true); }
+    }
+
+    async function genesis() {
+      try {
+        const fields = JSON.parse(document.getElementById('genFields').value);
+        const first_writer = document.getElementById('genWriter').value.trim();
+        const r = await api('/genesis', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fields, first_writer }) });
+        show('genOut', r.state);
+        refreshStatus();
+      } catch(e) { show('genOut', e.message, true); }
+    }
+
+    async function doWrite() {
+      try {
+        const writer = document.getElementById('writeWriter').value.trim();
+        const next_writer = document.getElementById('writeNext').value.trim();
+        const updates = JSON.parse(document.getElementById('writeUpdates').value);
+        show('writeOut', 'proving…');
+        const r = await api('/write', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ writer, next_writer, updates }) });
+        show('writeOut', { version: r.version, state: r.state });
+        refreshStatus();
+        refreshHistory();
+      } catch(e) { show('writeOut', e.message, true); }
+    }
+
+    async function reset() {
+      try {
+        await api('/reset', { method: 'POST' });
+        show('resetOut', 'reset ok');
+        refreshStatus();
+        refreshHistory();
+      } catch(e) { show('resetOut', e.message, true); }
+    }
+
+    refreshStatus();
+    refreshHistory();
+    setInterval(() => { refreshStatus(); refreshHistory(); }, 3000);
+  </script>
+</body>
+</html>
